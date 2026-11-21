@@ -1,0 +1,84 @@
+'use client';
+
+import { useState } from 'react';
+import Link from 'next/link';
+
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
+
+import { useDebouncedCallback } from 'use-debounce';
+
+import { fetchNotes } from '@/lib/api';
+
+import NoteList from '@/components/NoteList/NoteList';
+import Pagination from '@/components/Pagination/Pagination';
+import SearchBox from '@/components/SearchBox/SearchBox';
+
+import css from './NotesPage.module.css';
+
+import type { NoteTag } from '@/types/note';
+
+interface NotesClientProps {
+  tag?: NoteTag;
+}
+
+export default function NotesClient({ tag }: NotesClientProps) {
+  const [page, setPage] = useState(1);
+
+  const [searchInput, setSearchInput] = useState('');
+
+  const [search, setSearch] = useState('');
+
+  const { data, isLoading, isError, isFetching } = useQuery({
+    queryKey: ['notes', page, search, tag],
+
+    queryFn: () =>
+      fetchNotes({
+        page,
+        perPage: 12,
+        search,
+        tag,
+      }),
+
+    placeholderData: keepPreviousData,
+  });
+
+  const debouncedSearch = useDebouncedCallback((value: string) => {
+    setSearch(value);
+    setPage(1);
+  }, 500);
+
+  const handleSearchChange = (value: string) => {
+    setSearchInput(value);
+    debouncedSearch(value);
+  };
+
+  return (
+    <main className={css.app}>
+      <header className={css.toolbar}>
+        <SearchBox value={searchInput} onChange={handleSearchChange} />
+
+        {data && data.totalPages > 1 && (
+          <Pagination
+            pageCount={data.totalPages}
+            currentPage={page}
+            onPageChange={setPage}
+          />
+        )}
+
+        <Link href="/notes/action/create" className={css.button}>
+          Create note +
+        </Link>
+      </header>
+
+      {isLoading && <p>Loading notes...</p>}
+
+      {isFetching && !isLoading && <p>Updating notes...</p>}
+
+      {isError && <p role="alert">Something went wrong. Please try again.</p>}
+
+      {data && data.notes.length > 0 && <NoteList notes={data.notes} />}
+
+      {data && data.notes.length === 0 && <p>No notes found.</p>}
+    </main>
+  );
+}
