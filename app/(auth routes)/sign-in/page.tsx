@@ -6,6 +6,7 @@ import { useMutation } from '@tanstack/react-query';
 import axios from 'axios';
 
 import { login } from '@/lib/api/clientApi';
+import { useAuthStore } from '@/lib/store/authStore';
 
 import css from './page.module.css';
 
@@ -14,11 +15,16 @@ export default function SignInPage() {
 
   const [error, setError] = useState('');
 
+  const setUser = useAuthStore((state) => state.setUser);
+
   const { mutate, isPending } = useMutation({
     mutationFn: login,
 
-    onSuccess: () => {
+    onSuccess: (user) => {
+      setUser(user);
+
       setError('');
+
       router.replace('/profile');
       router.refresh();
     },

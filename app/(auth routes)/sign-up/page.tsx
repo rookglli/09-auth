@@ -6,6 +6,7 @@ import { useMutation } from '@tanstack/react-query';
 import axios from 'axios';
 
 import { register } from '@/lib/api/clientApi';
+import { useAuthStore } from '@/lib/store/authStore';
 
 import css from './page.module.css';
 
@@ -14,11 +15,16 @@ export default function SignUpPage() {
 
   const [error, setError] = useState('');
 
+  const setUser = useAuthStore((state) => state.setUser);
+
   const { mutate, isPending } = useMutation({
     mutationFn: register,
 
-    onSuccess: () => {
+    onSuccess: (user) => {
+      setUser(user);
+
       setError('');
+
       router.replace('/profile');
       router.refresh();
     },
@@ -72,6 +78,7 @@ export default function SignUpPage() {
             type="email"
             name="email"
             className={css.input}
+            autoComplete="email"
             required
           />
         </div>
@@ -84,6 +91,7 @@ export default function SignUpPage() {
             type="password"
             name="password"
             className={css.input}
+            autoComplete="new-password"
             required
           />
         </div>
