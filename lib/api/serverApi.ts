@@ -7,7 +7,7 @@ import api from './api';
 import type { Note, NoteTag } from '@/types/note';
 import type { User } from '@/types/user';
 
-// Типы для получения списка заметок
+// Типы для получения заметок
 
 export interface FetchNotesParams {
   page: number;
@@ -19,6 +19,12 @@ export interface FetchNotesParams {
 export interface FetchNotesResponse {
   notes: Note[];
   totalPages: number;
+}
+
+// Тип ответа при проверке сессии
+
+interface SessionResponse {
+  success: boolean;
 }
 
 // Получение списка заметок на сервере
@@ -46,7 +52,7 @@ export const fetchNotes = async ({
   return response.data;
 };
 
-// Получение одной заметки по ID на сервере
+// Получение заметки по ID
 
 export const fetchNoteById = async (id: string): Promise<Note> => {
   const cookieStore = await cookies();
@@ -60,7 +66,7 @@ export const fetchNoteById = async (id: string): Promise<Note> => {
   return response.data;
 };
 
-// Получение данных авторизованного пользователя
+// Получение данных пользователя
 
 export const getMe = async (): Promise<User> => {
   const cookieStore = await cookies();
@@ -72,4 +78,22 @@ export const getMe = async (): Promise<User> => {
   });
 
   return response.data;
+};
+
+// Проверка действующей сессии
+
+export const checkSession = async (): Promise<boolean> => {
+  const cookieStore = await cookies();
+
+  try {
+    const response = await api.get<SessionResponse>('/auth/session', {
+      headers: {
+        Cookie: cookieStore.toString(),
+      },
+    });
+
+    return response.data.success === true;
+  } catch {
+    return false;
+  }
 };
