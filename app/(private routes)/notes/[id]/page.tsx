@@ -6,7 +6,7 @@ import {
   dehydrate,
 } from '@tanstack/react-query';
 
-import { fetchNoteById } from '@/lib/api';
+import { fetchNoteById } from '@/lib/api/serverApi';
 
 import NoteDetailsClient from './NoteDetails.client';
 
@@ -20,7 +20,6 @@ const BASE_URL = 'https://08-zustand-xi-ashen-68.vercel.app';
 
 const OG_IMAGE = 'https://ac.goit.global/fullstack/react/notehub-og-meta.jpg';
 
-// SEO-метаданные отдельной заметки
 export async function generateMetadata({
   params,
 }: NoteDetailsPageProps): Promise<Metadata> {
@@ -54,7 +53,6 @@ export async function generateMetadata({
   };
 }
 
-// Серверный компонент страницы заметки
 export default async function NoteDetails({ params }: NoteDetailsPageProps) {
   const { id } = await params;
 
@@ -62,6 +60,7 @@ export default async function NoteDetails({ params }: NoteDetailsPageProps) {
 
   await queryClient.prefetchQuery({
     queryKey: ['note', id],
+
     queryFn: () => fetchNoteById(id),
   });
 
