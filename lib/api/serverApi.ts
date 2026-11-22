@@ -5,8 +5,10 @@ import { cookies } from 'next/headers';
 import api from './api';
 
 import type { Note, NoteTag } from '@/types/note';
+import type { User } from '@/types/user';
 
 // Типы для получения списка заметок
+
 export interface FetchNotesParams {
   page: number;
   perPage: number;
@@ -20,6 +22,7 @@ export interface FetchNotesResponse {
 }
 
 // Получение списка заметок на сервере
+
 export const fetchNotes = async ({
   page,
   perPage,
@@ -44,10 +47,25 @@ export const fetchNotes = async ({
 };
 
 // Получение одной заметки по ID на сервере
+
 export const fetchNoteById = async (id: string): Promise<Note> => {
   const cookieStore = await cookies();
 
   const response = await api.get<Note>(`/notes/${id}`, {
+    headers: {
+      Cookie: cookieStore.toString(),
+    },
+  });
+
+  return response.data;
+};
+
+// Получение данных авторизованного пользователя
+
+export const getMe = async (): Promise<User> => {
+  const cookieStore = await cookies();
+
+  const response = await api.get<User>('/users/me', {
     headers: {
       Cookie: cookieStore.toString(),
     },
