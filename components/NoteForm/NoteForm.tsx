@@ -4,11 +4,11 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-import { createNote } from '@/lib/api';
+import { createNote } from '@/lib/api/clientApi';
 import { useNoteStore } from '@/lib/store/noteStore';
 
 import type { NoteTag } from '@/types/note';
-import type { CreateNoteParams } from '@/lib/api';
+import type { CreateNoteParams } from '@/lib/api/clientApi';
 
 import css from './NoteForm.module.css';
 
@@ -41,6 +41,7 @@ export default function NoteForm() {
 
     const title = String(formData.get('title') ?? '').trim();
     const content = String(formData.get('content') ?? '').trim();
+
     const tag = String(formData.get('tag') ?? 'Todo') as NoteTag;
 
     if (title.length < 3 || title.length > 50) {
@@ -110,7 +111,11 @@ export default function NoteForm() {
           name="tag"
           className={css.select}
           defaultValue={draft.tag}
-          onChange={(event) => setDraft({ tag: event.target.value as NoteTag })}
+          onChange={(event) =>
+            setDraft({
+              tag: event.target.value as NoteTag,
+            })
+          }
         >
           <option value="Todo">Todo</option>
           <option value="Work">Work</option>
