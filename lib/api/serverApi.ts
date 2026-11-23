@@ -8,8 +8,6 @@ import api from './api';
 import type { Note, NoteTag } from '@/types/note';
 import type { User } from '@/types/user';
 
-// Типы для получения заметок
-
 export interface FetchNotesParams {
   page: number;
   perPage: number;
@@ -22,13 +20,9 @@ export interface FetchNotesResponse {
   totalPages: number;
 }
 
-// Тип ответа при проверке сессии
-
 export interface SessionResponse {
   success: boolean;
 }
-
-// Получение списка заметок на сервере
 
 export const fetchNotes = async ({
   page,
@@ -53,8 +47,6 @@ export const fetchNotes = async ({
   return response.data;
 };
 
-// Получение заметки по ID
-
 export const fetchNoteById = async (id: string): Promise<Note> => {
   const cookieStore = await cookies();
 
@@ -67,8 +59,6 @@ export const fetchNoteById = async (id: string): Promise<Note> => {
   return response.data;
 };
 
-// Получение данных пользователя
-
 export const getMe = async (): Promise<User> => {
   const cookieStore = await cookies();
 
@@ -80,8 +70,6 @@ export const getMe = async (): Promise<User> => {
 
   return response.data;
 };
-
-// Проверка действующей сессии
 
 export const checkSession = async (): Promise<
   AxiosResponse<SessionResponse>

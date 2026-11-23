@@ -2,16 +2,14 @@ import { cookies } from 'next/headers';
 import { NextResponse, type NextRequest } from 'next/server';
 import { parseSetCookie, stringifyCookie } from 'cookie';
 
+import { checkSession } from './lib/api/serverApi';
+
 const privateRoutes = ['/notes', '/profile'];
 const publicRoutes = ['/sign-in', '/sign-up'];
 
 const matchesRoute = (pathname: string, route: string): boolean => {
   return pathname === route || pathname.startsWith(`${route}/`);
 };
-
-interface SessionResponse {
-  success: boolean;
-}
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -24,15 +22,13 @@ export async function proxy(request: NextRequest) {
     matchesRoute(pathname, route),
   );
 
-  // Получаем cookies через асинхронный API Next.js.
+  // Получаем cookies через Next.js.
   const cookieStore = await cookies();
 
   // Проверяем наличие токенов.
   const accessToken = cookieStore.get('accessToken')?.value;
   const refreshToken = cookieStore.get('refreshToken')?.value;
 
-  // Если accessToken существует, считаем пользователя
-  // авторизованным без дополнительного запроса.
   let isAuthenticated = Boolean(accessToken);
 
   const requestHeaders = new Headers(request.headers);
@@ -43,37 +39,30 @@ export async function proxy(request: NextRequest) {
 
   let sessionCookies: string[] = [];
 
-  // Обновляем сессию только тогда, когда:
-  // 1. accessToken отсутствует;
-  // 2. refreshToken существует.
+  // Обновляем сессию только при отсутствии accessToken
+  // и наличии refreshToken.
   if (!accessToken && refreshToken) {
     try {
-      const sessionResponse = await fetch(
-        new URL('/api/auth/session', request.url),
-        {
-          method: 'GET',
-          headers: {
-            Cookie: cookieStore.toString(),
-          },
-          cache: 'no-store',
-        },
-      );
+      const sessionResponse = await checkSession();
 
-      if (sessionResponse.ok) {
-        const data: SessionResponse = await sessionResponse.json();
+      if (sessionResponse.data.success === true) {
+        isAuthenticated = true;
 
-        if (data.success === true) {
-          isAuthenticated = true;
+        // Получаем заголовок Set-Cookie из ответа Axios.
+        const setCookieHeader = sessionResponse.headers['set-cookie'];
 
-          // Получаем обновлённые cookies.
-          sessionCookies = sessionResponse.headers.getSetCookie();
+        if (Array.isArray(setCookieHeader)) {
+          sessionCookies = setCookieHeader;
+        } else if (typeof setCookieHeader === 'string') {
+          sessionCookies = [setCookieHeader];
+        }
 
-          for (const cookieString of sessionCookies) {
-            const parsed = parseSetCookie(cookieString);
+        // Подготавливаем обновлённые cookies.
+        for (const cookieString of sessionCookies) {
+          const parsed = parseSetCookie(cookieString);
 
-            if (parsed.name && parsed.value !== undefined) {
-              updatedCookies[parsed.name] = parsed.value;
-            }
+          if (parsed.name && parsed.value !== undefined) {
+            updatedCookies[parsed.name] = parsed.value;
           }
         }
       }
@@ -89,19 +78,11 @@ export async function proxy(request: NextRequest) {
 
   let response: NextResponse;
 
-  // Неавторизованным пользователям закрываем приватные страницы.
   if (isPrivateRoute && !isAuthenticated) {
     response = NextResponse.redirect(new URL('/sign-in', request.url));
-  }
-
-  // Авторизованных пользователей перенаправляем
-  // со страниц входа и регистрации на главную.
-  else if (isPublicRoute && isAuthenticated) {
+  } else if (isPublicRoute && isAuthenticated) {
     response = NextResponse.redirect(new URL('/', request.url));
-  }
-
-  // Во всех остальных случаях разрешаем переход.
-  else {
+  } else {
     response = NextResponse.next({
       request: {
         headers: requestHeaders,
