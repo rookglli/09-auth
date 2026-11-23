@@ -16,7 +16,7 @@ interface NoteDetailsPageProps {
   }>;
 }
 
-const BASE_URL = 'https://08-zustand-xi-ashen-68.vercel.app';
+const BASE_URL = 'https://09-auth-liard-phi.vercel.app';
 
 const OG_IMAGE = 'https://ac.goit.global/fullstack/react/notehub-og-meta.jpg';
 

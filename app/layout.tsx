@@ -17,13 +17,13 @@ const roboto = Roboto({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://08-zustand-xi-ashen-68.vercel.app/'),
+  metadataBase: new URL('https://09-auth-liard-phi.vercel.app/'),
   title: 'NoteHub',
   description: 'A simple application for managing personal notes',
   openGraph: {
     title: 'NoteHub',
     description: 'A simple application for managing personal notes',
-    url: 'https://08-zustand-xi-ashen-68.vercel.app/',
+    url: 'https://09-auth-liard-phi.vercel.app/',
     images: [
       {
         url: 'https://ac.goit.global/fullstack/react/notehub-og-meta.jpg',
