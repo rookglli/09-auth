@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { cookies } from 'next/headers';
+import type { AxiosResponse } from 'axios';
 
 import api from './api';
 
@@ -23,7 +24,7 @@ export interface FetchNotesResponse {
 
 // Тип ответа при проверке сессии
 
-interface SessionResponse {
+export interface SessionResponse {
   success: boolean;
 }
 
@@ -82,18 +83,16 @@ export const getMe = async (): Promise<User> => {
 
 // Проверка действующей сессии
 
-export const checkSession = async (): Promise<boolean> => {
+export const checkSession = async (): Promise<
+  AxiosResponse<SessionResponse>
+> => {
   const cookieStore = await cookies();
 
-  try {
-    const response = await api.get<SessionResponse>('/auth/session', {
-      headers: {
-        Cookie: cookieStore.toString(),
-      },
-    });
+  const response = await api.get<SessionResponse>('/auth/session', {
+    headers: {
+      Cookie: cookieStore.toString(),
+    },
+  });
 
-    return response.data.success === true;
-  } catch {
-    return false;
-  }
+  return response;
 };
