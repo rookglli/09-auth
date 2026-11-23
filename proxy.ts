@@ -9,6 +9,10 @@ const matchesRoute = (pathname: string, route: string): boolean => {
   return pathname === route || pathname.startsWith(`${route}/`);
 };
 
+interface SessionResponse {
+  success: boolean;
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -23,61 +27,81 @@ export async function proxy(request: NextRequest) {
   // Получаем cookies через асинхронный API Next.js.
   const cookieStore = await cookies();
 
+  // Проверяем наличие токенов.
+  const accessToken = cookieStore.get('accessToken')?.value;
+  const refreshToken = cookieStore.get('refreshToken')?.value;
+
+  // Если accessToken существует, считаем пользователя
+  // авторизованным без дополнительного запроса.
+  let isAuthenticated = Boolean(accessToken);
+
+  const requestHeaders = new Headers(request.headers);
+
   const updatedCookies: Record<string, string> = Object.fromEntries(
     cookieStore.getAll().map(({ name, value }) => [name, value]),
   );
 
-  const requestHeaders = new Headers(request.headers);
-
-  let isAuthenticated = false;
   let sessionCookies: string[] = [];
 
-  try {
-    const sessionResponse = await fetch(
-      new URL('/api/auth/session', request.url),
-      {
-        method: 'GET',
-        headers: {
-          Cookie: cookieStore.toString(),
+  // Обновляем сессию только тогда, когда:
+  // 1. accessToken отсутствует;
+  // 2. refreshToken существует.
+  if (!accessToken && refreshToken) {
+    try {
+      const sessionResponse = await fetch(
+        new URL('/api/auth/session', request.url),
+        {
+          method: 'GET',
+          headers: {
+            Cookie: cookieStore.toString(),
+          },
+          cache: 'no-store',
         },
-        cache: 'no-store',
-      },
-    );
+      );
 
-    if (sessionResponse.ok) {
-      const data: { success: boolean } = await sessionResponse.json();
+      if (sessionResponse.ok) {
+        const data: SessionResponse = await sessionResponse.json();
 
-      isAuthenticated = data.success === true;
+        if (data.success === true) {
+          isAuthenticated = true;
 
-      // Сохраняем cookies, обновлённые сервером авторизации.
-      sessionCookies = sessionResponse.headers.getSetCookie();
+          // Получаем обновлённые cookies.
+          sessionCookies = sessionResponse.headers.getSetCookie();
 
-      for (const cookieString of sessionCookies) {
-        const parsed = parseSetCookie(cookieString);
+          for (const cookieString of sessionCookies) {
+            const parsed = parseSetCookie(cookieString);
 
-        if (parsed.name && parsed.value !== undefined) {
-          updatedCookies[parsed.name] = parsed.value;
+            if (parsed.name && parsed.value !== undefined) {
+              updatedCookies[parsed.name] = parsed.value;
+            }
+          }
         }
       }
+    } catch (error) {
+      console.error('Session refresh failed:', error);
     }
-  } catch (error) {
-    console.error('Session validation failed:', error);
   }
 
-  // Передаём обновлённые cookies следующим серверным обработчикам.
+  // Передаём обновлённые cookies серверным компонентам.
   if (sessionCookies.length > 0) {
     requestHeaders.set('cookie', stringifyCookie(updatedCookies));
   }
 
   let response: NextResponse;
 
+  // Неавторизованным пользователям закрываем приватные страницы.
   if (isPrivateRoute && !isAuthenticated) {
-    // Неавторизованный пользователь -> страница входа.
     response = NextResponse.redirect(new URL('/sign-in', request.url));
-  } else if (isPublicRoute && isAuthenticated) {
-    // Авторизованный пользователь -> главная страница.
+  }
+
+  // Авторизованных пользователей перенаправляем
+  // со страниц входа и регистрации на главную.
+  else if (isPublicRoute && isAuthenticated) {
     response = NextResponse.redirect(new URL('/', request.url));
-  } else {
+  }
+
+  // Во всех остальных случаях разрешаем переход.
+  else {
     response = NextResponse.next({
       request: {
         headers: requestHeaders,
@@ -85,8 +109,7 @@ export async function proxy(request: NextRequest) {
     });
   }
 
-  // Возвращаем обновлённые cookies браузеру.
-  // Сохраняем исходные атрибуты HttpOnly, Secure, SameSite и другие.
+  // Передаём обновлённые cookies браузеру.
   for (const cookieString of sessionCookies) {
     response.headers.append('set-cookie', cookieString);
   }
